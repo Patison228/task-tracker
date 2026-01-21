@@ -1,0 +1,105 @@
+.board-container {
+  min-height: 100vh;
+  padding: 2rem;
+  background: linear-gradient(135deg, #f0fdf4 0%, #d1fae5 100%);
+}
+
+.board-content {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.board-header {
+  margin-bottom: 3rem;
+}
+
+.back-button {
+  color: #22c55e;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.5rem 0;
+  transition: color 0.2s ease;
+}
+
+.back-button:hover {
+  color: #16a34a;
+}
+
+.board-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.column-creator {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 3rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.column-input {
+  flex: 1;
+  min-width: 300px;
+}
+
+.column-btn {
+  padding: 0.875rem 2rem !important;
+  white-space: nowrap;
+}
+
+.columns-container {
+  display: flex;
+  gap: 1.5rem;
+  overflow-x: auto;
+  padding-bottom: 2rem;
+  margin-bottom: -2rem;
+  scrollbar-width: thin;
+  scrollbar-color: #22c55e #f1f5f9;
+}
+
+.columns-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.columns-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.columns-container::-webkit-scrollbar-thumb {
+  background: #22c55e;
+  border-radius: 4px;
+}
+
+.columns-container::-webkit-scrollbar-thumb:hover {
+  background: #16a34a;
+}
+
+.tasks-container {
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.add-task-btn {
+  width: 100%;
+  margin-top: 1.5rem;
+  padding: 0.875rem 1rem !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
