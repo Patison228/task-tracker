@@ -4,7 +4,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
 import "../styles/SortableColumn.css";
 
-const SortableColumn = ({ id, column, children }) => {
+const SortableColumn = ({ id, column, children, data }) => {
   const {
     attributes,
     listeners,
@@ -12,12 +12,15 @@ const SortableColumn = ({ id, column, children }) => {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id });
+  } = useSortable({
+    id,
+    data,
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.6 : 1,
   };
 
   return (
@@ -29,6 +32,9 @@ const SortableColumn = ({ id, column, children }) => {
       <div className="column-header" {...attributes} {...listeners}>
         <GripVertical size={20} className="grip-icon" />
         <h3 className="column-title">{column.title}</h3>
+        <span className="column-count">
+          {React.Children.toArray(children)[0]?.props?.children?.length || 0}
+        </span>
       </div>
       {children}
     </div>
