@@ -1,2 +1,3 @@
 backend/instance/task_tracker.db
 backend/__pycache__/models.cpython-313.pyc
+instance/task-tracker.db
