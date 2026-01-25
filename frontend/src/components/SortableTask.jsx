@@ -12,6 +12,7 @@ const SortableTask = ({ id, task, onDelete, data }) => {
     transform,
     transition,
     isDragging,
+    isOver,
   } = useSortable({
     id,
     data,
@@ -25,6 +26,7 @@ const SortableTask = ({ id, task, onDelete, data }) => {
 
   const handleDelete = (e) => {
     e.stopPropagation();
+    e.preventDefault();
     onDelete();
   };
 
@@ -32,7 +34,7 @@ const SortableTask = ({ id, task, onDelete, data }) => {
     <div
       ref={setNodeRef}
       style={style}
-      className={`sortable-task ${isDragging ? "dragging" : ""}`}
+      className={`sortable-task ${isDragging ? "dragging" : ""} ${isOver ? "drag-over" : ""}`}
     >
       <div className="task-content">
         <div className="task-header">
@@ -40,7 +42,11 @@ const SortableTask = ({ id, task, onDelete, data }) => {
             <GripVertical size={16} className="grip-icon" />
             <h4 className="task-title">{task.title}</h4>
           </div>
-          <button onClick={handleDelete} className="delete-btn">
+          <button
+            onClick={handleDelete}
+            className="delete-btn"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
             <X size={16} />
           </button>
         </div>
@@ -49,11 +55,6 @@ const SortableTask = ({ id, task, onDelete, data }) => {
         )}
         <div className="task-footer">
           <span className="task-position">#{task.position + 1}</span>
-          {task.deadline && (
-            <span className="task-deadline">
-              {new Date(task.deadline).toLocaleDateString()}
-            </span>
-          )}
         </div>
       </div>
     </div>

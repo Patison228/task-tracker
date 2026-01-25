@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   DndContext,
-  closestCenter,
+  closestCorners,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -28,12 +28,13 @@ const Board = () => {
   const [tasks, setTasks] = useState({});
   const [newColumnTitle, setNewColumnTitle] = useState("");
   const [activeId, setActiveId] = useState(null);
+  const [activeType, setActiveType] = useState(null);
   const [activeTask, setActiveTask] = useState(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 5,
       },
     }),
     useSensor(KeyboardSensor, {
@@ -177,8 +178,11 @@ const Board = () => {
     const { active } = event;
     setActiveId(active.id);
 
-    // Если это задача, сохраняем её данные
-    if (active.data.current?.type === "task") {
+    // Определяем тип перетаскиваемого элемента
+    const data = active.data.current;
+    if (data?.type === "task") {
+      setActiveType("task");
+      // Находим задачу
       for (const [columnId, columnTasks] of Object.entries(tasks)) {
         const task = columnTasks.find((t) => t.id === active.id);
         if (task) {
@@ -186,36 +190,69 @@ const Board = () => {
           break;
         }
       }
+    } else {
+      setActiveType("column");
     }
   };
 
-  const handleDragEnd = async (event) => {
+  const handleDragOver = (event) => {
     const { active, over } = event;
 
-    // Сбрасываем активные элементы
-    setActiveId(null);
-    setActiveTask(null);
-
     if (!over) return;
+    if (active.id === over.id) return;
 
-    // Если это колонка
+    // Если перетаскиваем колонку
     if (active.data.current?.type === "column") {
       const oldIndex = columns.findIndex((col) => col.id === active.id);
       const newIndex = columns.findIndex((col) => col.id === over.id);
 
       if (oldIndex !== newIndex && newIndex >= 0) {
-        const newColumns = arrayMove(columns, oldIndex, newIndex);
-        setColumns(newColumns);
-
-        // Обновляем позиции на сервере
-        newColumns.forEach(async (column, index) => {
-          await updateColumnPosition(column.id, index);
-        });
+        setColumns((items) => arrayMove(items, oldIndex, newIndex));
       }
+    }
+    // Если перетаскиваем задачу - обрабатываем в handleDragEnd
+  };
+
+  const handleDragEnd = async (event) => {
+    const { active, over } = event;
+
+    if (!over) {
+      resetDragState();
       return;
     }
 
-    // Если это задача
+    try {
+      // Если перетаскиваем колонку
+      if (active.data.current?.type === "column") {
+        const oldIndex = columns.findIndex((col) => col.id === active.id);
+        const newIndex = columns.findIndex((col) => col.id === over.id);
+
+        if (oldIndex !== newIndex && newIndex >= 0) {
+          // Сохраняем новое положение
+          const newColumns = arrayMove(columns, oldIndex, newIndex);
+
+          // Обновляем позиции на сервере
+          const updatePromises = newColumns.map((column, index) =>
+            updateColumnPosition(column.id, index),
+          );
+
+          await Promise.all(updatePromises);
+          await fetchColumns(); // Синхронизируем
+        }
+      }
+      // Если перетаскиваем задачу
+      else if (active.data.current?.type === "task") {
+        await handleTaskDragEnd(active, over);
+      }
+    } catch (error) {
+      console.error("Ошибка при перетаскивании:", error);
+      await fetchColumns(); // Перезагружаем при ошибке
+    } finally {
+      resetDragState();
+    }
+  };
+
+  const handleTaskDragEnd = async (active, over) => {
     const activeId = active.id;
     const overId = over.id;
 
@@ -259,13 +296,8 @@ const Board = () => {
       const overIndex = targetTasks.findIndex((task) => task.id === overId);
 
       if (activeIndex !== overIndex && overIndex >= 0) {
+        // Создаем новый массив с обновленными позициями
         const newTasks = arrayMove(targetTasks, activeIndex, overIndex);
-
-        // Оптимистичное обновление UI
-        setTasks((prev) => ({
-          ...prev,
-          [targetColumnId]: newTasks,
-        }));
 
         // Обновляем позиции на сервере
         const updatePromises = newTasks.map((task, idx) =>
@@ -276,11 +308,7 @@ const Board = () => {
         );
 
         await Promise.all(updatePromises);
-
-        // Обновляем данные с сервера для синхронизации
-        setTimeout(() => {
-          fetchColumns();
-        }, 100);
+        await fetchColumns();
       }
     } else {
       // Перемещение между колонками
@@ -291,53 +319,45 @@ const Board = () => {
         newPosition = overIndex >= 0 ? overIndex : targetTasks.length;
       }
 
-      // Оптимистичное обновление UI
+      // Обновляем перемещенную задачу
+      await updateTask(activeId, {
+        column_id: targetColumnId,
+        position: newPosition,
+      });
+
+      // Обновляем позиции в исходной колонке
       const newSourceTasks = sourceTasks.filter((task) => task.id !== activeId);
-      const newTargetTasks = [
-        ...targetTasks.slice(0, newPosition),
-        { ...movedTask, column_id: targetColumnId },
-        ...targetTasks.slice(newPosition),
-      ];
+      const sourceUpdates = newSourceTasks.map((task, idx) =>
+        updateTask(task.id, { position: idx }),
+      );
 
-      setTasks((prev) => ({
-        ...prev,
-        [sourceColumnId]: newSourceTasks,
-        [targetColumnId]: newTargetTasks,
-      }));
+      // Обновляем позиции в целевой колонке
+      const targetUpdates = targetTasks.map((task, idx) => {
+        if (idx >= newPosition) {
+          return updateTask(task.id, { position: idx + 1 });
+        }
+        return updateTask(task.id, { position: idx });
+      });
 
-      try {
-        // Сначала обновляем перемещенную задачу
-        await updateTask(activeId, {
-          column_id: targetColumnId,
-          position: newPosition,
-        });
-
-        // Затем обновляем позиции в исходной колонке
-        const sourceUpdates = newSourceTasks.map((task, idx) =>
-          updateTask(task.id, { position: idx }),
-        );
-
-        // И в целевой колонке (кроме перемещенной задачи)
-        const targetUpdates = newTargetTasks
-          .filter((task) => task.id !== activeId)
-          .map((task, idx) => updateTask(task.id, { position: idx }));
-
-        await Promise.all([...sourceUpdates, ...targetUpdates]);
-
-        // Обновляем данные с сервера
-        fetchColumns();
-      } catch (error) {
-        console.error("Ошибка при обновлении:", error);
-        // В случае ошибки перезагружаем данные
-        fetchColumns();
-      }
+      await Promise.all([...sourceUpdates, ...targetUpdates]);
+      await fetchColumns();
     }
   };
 
   const handleDragCancel = () => {
+    resetDragState();
+  };
+
+  const resetDragState = () => {
     setActiveId(null);
+    setActiveType(null);
     setActiveTask(null);
   };
+
+  // Получаем все ID задач для SortableContext
+  const allTaskIds = Object.values(tasks)
+    .flat()
+    .map((task) => task.id);
 
   return (
     <div className="board-container">
@@ -367,21 +387,23 @@ const Board = () => {
 
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCenter}
+          collisionDetection={closestCorners}
           onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
         >
-          <SortableContext
-            items={columns.map((c) => c.id)}
-            strategy={horizontalListSortingStrategy}
-          >
-            <div className="columns-container">
+          <div className="columns-container">
+            <SortableContext
+              items={columns.map((col) => col.id)}
+              strategy={horizontalListSortingStrategy}
+            >
               {columns.map((column) => (
                 <SortableColumn
                   key={column.id}
                   id={column.id}
                   column={column}
+                  taskCount={(tasks[column.id] || []).length}
                   data={{ type: "column" }}
                 >
                   <div className="tasks-container">
@@ -409,11 +431,11 @@ const Board = () => {
                   </button>
                 </SortableColumn>
               ))}
-            </div>
-          </SortableContext>
+            </SortableContext>
+          </div>
 
-          <DragOverlay>
-            {activeId && activeTask ? (
+          <DragOverlay dropAnimation={null}>
+            {activeType === "task" && activeTask ? (
               <div className="task-overlay">
                 <div className="sortable-task dragging">
                   <div className="task-content">
@@ -423,6 +445,21 @@ const Board = () => {
                         <h4 className="task-title">{activeTask.title}</h4>
                       </div>
                     </div>
+                  </div>
+                </div>
+              </div>
+            ) : activeType === "column" && activeId ? (
+              <div className="column-overlay">
+                <div className="sortable-column dragging">
+                  <div className="column-header">
+                    <div className="grip-icon"></div>
+                    <h3 className="column-title">
+                      {columns.find((c) => c.id === activeId)?.title ||
+                        "Колонка"}
+                    </h3>
+                    <span className="column-count">
+                      {(tasks[activeId] || []).length}
+                    </span>
                   </div>
                 </div>
               </div>

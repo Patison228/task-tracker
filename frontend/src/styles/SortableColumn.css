@@ -68,12 +68,30 @@
 .column-count {
   background: #22c55e;
   color: white;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   font-weight: 600;
-  padding: 0.25rem 0.5rem;
+  padding: 0.25rem 0.625rem;
   border-radius: 999px;
-  min-width: 24px;
+  min-width: 28px;
   text-align: center;
+  display: inline-block;
+}
+
+/* Пульсирующая анимация при изменении счетчика */
+@keyframes countPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.column-count.changed {
+  animation: countPulse 0.3s ease;
 }
 
 /* Скроллбар внутри колонки */
@@ -93,4 +111,20 @@
 
 .sortable-column::-webkit-scrollbar-thumb:hover {
   background: rgba(34, 197, 94, 0.5);
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .sortable-column {
+    width: 280px;
+    min-width: 280px;
+  }
+
+  .column-header {
+    padding: 0.5rem;
+  }
+
+  .column-title {
+    font-size: 1rem;
+  }
 }
