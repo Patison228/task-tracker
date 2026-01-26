@@ -47,8 +47,9 @@
 
 .form-group {
   display: flex;
-  flex-direction: 100%;
+  flex-direction: column;
   gap: 0.5rem;
+  width: 100%; /* Добавлено */
 }
 
 .form-label {
@@ -57,14 +58,35 @@
   font-weight: 500;
   color: #374151;
   margin-bottom: 0.5rem;
+  width: 100%; /* Добавлено */
+}
+
+/* Исправлено: убрана фиксированная ширина, чтобы поля были одинаковыми */
+.input-field {
+  width: 100%; /* Теперь 100% ширины контейнера */
+  padding: 12px 16px;
+  border: 2px solid #dcfce7;
+  border-radius: 12px;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  background: white;
+  box-sizing: border-box; /* Важно для правильного расчета ширины */
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
 }
 
 .password-container {
   position: relative;
+  width: 100%; /* Добавлено */
 }
 
 .input-password {
   padding-right: 3.5rem !important;
+  width: 100%; /* Обеспечивает одинаковую ширину */
 }
 
 .password-toggle {
@@ -118,4 +140,15 @@
 
 .toggle-link:hover {
   color: #16a34a;
+}
+
+/* Адаптивность */
+@media (max-width: 480px) {
+  .login-card {
+    padding: 2rem 1.5rem;
+  }
+
+  .login-title {
+    font-size: 2rem;
+  }
 }
