@@ -1,0 +1,89 @@
+version: "3.8"
+
+services:
+  # ===== FRONTEND - Production сборка =====
+  frontend:
+    build:
+      context: ./frontend
+      target: production # Используем production stage - только dist
+
+    container_name: task-tracker-frontend
+
+    ports:
+      - "3000:3000"
+
+    # НЕТ VOLUME!
+    # Почему: фронтенд уже собран в dist/, нечего монтировать
+    # При изменениях нужен rebuild: docker-compose up --build
+
+    environment:
+      - VITE_API_URL=/api # Относительный путь - всё на одном хосте
+
+    depends_on:
+      - backend
+
+    networks:
+      - app-network
+
+    restart: always # Всегда перезапустить если упал
+
+    # HEALTH CHECK
+    # Зачем: Docker проверяет живой ли контейнер
+    # Если нет - перезапускает
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3000",
+        ]
+      interval: 30s # Проверяет каждые 30 секунд
+      timeout: 10s # Если ответ дольше 10с - считает fallen
+      retries: 3 # 3 неудачные попытки = контейнер мёртв
+
+  # ===== BACKEND - Production Gunicorn =====
+  backend:
+    build:
+      context: ./backend
+
+    container_name: task-tracker-backend
+
+    ports:
+      - "5000:5000"
+
+    # НЕТ VOLUME (или только для данных)!
+    # Почему: код уже в контейнере, изменения требуют rebuild
+    # Только data volume для БД (если нужно сохранять между запусками)
+    volumes:
+      - ./backend/data:/app/data # Папка для БД (сохраняется между restarts)
+
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=sqlite:////app/data/prod.db # БД в volume
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY} # Из .env на хосте
+      - CORS_ORIGINS=https://yourdomain.com # Только свой домен
+
+    networks:
+      - app-network
+
+    restart: always
+
+    # COMMAND OVERRIDE
+    # Переопределяет CMD из Dockerfile
+    # Вместо "python -m flask run" запускает gunicorn
+    command: gunicorn --bind 0.0.0.0:5000 --workers 4 --timeout 120 app:app
+
+    # HEALTH CHECK
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# ===== NETWORK =====
+networks:
+  app-network:
+    driver: bridge

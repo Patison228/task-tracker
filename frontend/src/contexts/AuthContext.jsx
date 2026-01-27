@@ -1,5 +1,4 @@
 import React, { createContext, useState, useContext, useEffect } from "react";
-import axios from "axios";
 
 const AuthContext = createContext();
 
@@ -10,12 +9,11 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [boards, setBoards] = useState([]);
 
-  const API_BASE = "http://localhost:5000";
+  const API_BASE = window.__API_BASE_URL__;
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
     if (token) {
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
       fetchBoards();
     }
     setLoading(false);
@@ -23,33 +21,72 @@ export const AuthProvider = ({ children }) => {
 
   const fetchBoards = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/boards`);
-      setBoards(res.data);
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(`${API_BASE}/api/boards`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch boards");
+      }
+
+      const data = await res.json();
+      setBoards(data);
     } catch (err) {
       console.error(err);
+      setBoards([]);
     }
   };
 
   const login = async (username, password) => {
     try {
-      const res = await axios.post(`${API_BASE}/login`, { username, password });
-      localStorage.setItem("access_token", res.data.access_token);
-      localStorage.setItem("refresh_token", res.data.refresh_token);
-      axios.defaults.headers.common["Authorization"] =
-        `Bearer ${res.data.access_token}`;
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password }),
+      });
+
+      if (!res.ok) {
+        return false;
+      }
+
+      const data = await res.json();
+      localStorage.setItem("access_token", data.access_token);
+
+      if (data.refresh_token) {
+        localStorage.setItem("refresh_token", data.refresh_token);
+      }
+
       setUser({ username });
-      fetchBoards();
+      await fetchBoards();
       return true;
     } catch (err) {
+      console.error(err);
       return false;
     }
   };
 
   const register = async (username, password) => {
     try {
-      await axios.post(`${API_BASE}/register`, { username, password });
+      const res = await fetch(`${API_BASE}/api/auth/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password }),
+      });
+
+      if (!res.ok) {
+        return false;
+      }
+
       return await login(username, password);
     } catch (err) {
+      console.error(err);
       return false;
     }
   };
@@ -59,7 +96,6 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("refresh_token");
     setUser(null);
     setBoards([]);
-    delete axios.defaults.headers.common["Authorization"];
   };
 
   return (

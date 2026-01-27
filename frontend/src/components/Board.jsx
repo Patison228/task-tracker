@@ -12,31 +12,29 @@ const Board = () => {
   const [tasks, setTasks] = useState({});
   const [newColumnTitle, setNewColumnTitle] = useState("");
 
+  // ✅ Получаем API URL из глобальной переменной
+  const API_URL = window.__API_BASE_URL__;
+
   const fetchColumns = useCallback(async () => {
     try {
       const token = localStorage.getItem("access_token");
-      const res = await fetch(
-        `http://localhost:5000/boards/${boardId}/columns`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+
+      const res = await fetch(`${API_URL}/api/boards/${boardId}/columns`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-      );
+      });
       const cols = await res.json();
       const sortedColumns = cols.sort((a, b) => a.position - b.position);
       setColumns(sortedColumns);
 
       const tasksData = {};
       for (const col of sortedColumns) {
-        const taskRes = await fetch(
-          `http://localhost:5000/columns/${col.id}/tasks`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+        const taskRes = await fetch(`${API_URL}/api/columns/${col.id}/tasks`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
           },
-        );
+        });
         const colTasks = await taskRes.json();
         tasksData[col.id] = colTasks.sort((a, b) => a.position - b.position);
       }
@@ -44,7 +42,7 @@ const Board = () => {
     } catch (err) {
       console.error(err);
     }
-  }, [boardId]);
+  }, [boardId, API_URL]);
 
   useEffect(() => {
     fetchColumns();
@@ -54,7 +52,8 @@ const Board = () => {
     if (!newColumnTitle.trim()) return;
     try {
       const token = localStorage.getItem("access_token");
-      await fetch(`http://localhost:5000/boards/${boardId}/columns`, {
+
+      await fetch(`${API_URL}/api/boards/${boardId}/columns`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -76,7 +75,8 @@ const Board = () => {
     if (!window.confirm("Удалить колонку и все задачи в ней?")) return;
     try {
       const token = localStorage.getItem("access_token");
-      await fetch(`http://localhost:5000/columns/${columnId}`, {
+
+      await fetch(`${API_URL}/api/columns/${columnId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -94,7 +94,8 @@ const Board = () => {
     try {
       const token = localStorage.getItem("access_token");
       const colTasks = tasks[columnId] || [];
-      await fetch(`http://localhost:5000/columns/${columnId}/tasks`, {
+
+      await fetch(`${API_URL}/api/columns/${columnId}/tasks`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -115,7 +116,8 @@ const Board = () => {
     if (!window.confirm("Удалить задачу?")) return;
     try {
       const token = localStorage.getItem("access_token");
-      await fetch(`http://localhost:5000/tasks/${taskId}`, {
+
+      await fetch(`${API_URL}/api/tasks/${taskId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -130,17 +132,15 @@ const Board = () => {
   const moveTask = async (taskId, direction) => {
     try {
       const token = localStorage.getItem("access_token");
-      const response = await fetch(
-        `http://localhost:5000/tasks/${taskId}/move`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ direction }),
+
+      const response = await fetch(`${API_URL}/api/tasks/${taskId}/move`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-      );
+        body: JSON.stringify({ direction }),
+      });
 
       if (response.ok) {
         fetchColumns();
@@ -154,7 +154,6 @@ const Board = () => {
     }
   };
 
-  // Определяем, можно ли переместить задачу влево/вправо
   const canMoveTask = (task, columnId) => {
     const columnIndex = columns.findIndex((col) => col.id === columnId);
     return {
@@ -196,7 +195,7 @@ const Board = () => {
               column={column}
               taskCount={(tasks[column.id] || []).length}
               onAddTask={() => createTask(column.id)}
-              onDelete={() => deleteColumn(column.id)} 
+              onDelete={() => deleteColumn(column.id)}
             >
               {(tasks[column.id] || []).map((task) => {
                 const { left, right } = canMoveTask(task, column.id);

@@ -1,0 +1,73 @@
+version: "3.8"
+
+services:
+  # ===== FRONTEND - Vite dev сервер с HMR =====
+  frontend:
+    build:
+      context: ./frontend
+      target: development # Используем development stage из Dockerfile
+
+    container_name: task-tracker-frontend-dev
+
+    ports:
+      - "3000:3000" # Доступ снаружи: localhost:3000
+
+    # VOLUME МОНТИРОВАНИЕ - КЛЮЧЕВОЕ
+    # Зачем это нужно:
+    # - При изменении файла на хосте, изменение видно сразу в контейнере
+    # - Vite видит изменение и отправляет HMR обновление браузеру
+    # - Без этого пришлось бы пересобирать контейнер при каждом изменении
+    volumes:
+      - ./frontend:/app # Монтируем всю папку frontend
+      - /app/node_modules # ИСКЛЮЧЕНИЕ: используем node_modules из контейнера
+
+    environment:
+      # ВАЖНО: Внутри контейнера используется имя сервиса из compose файла
+      # "backend" - это имя сервиса, Docker имеет встроенный DNS
+      # Контейнер frontend может обратиться к http://backend:5000
+      - VITE_API_URL=http://backend:5000
+
+    depends_on:
+      - backend # Frontend зависит от backend
+
+    networks:
+      - app-network # Оба контейнера в одной сети
+
+    restart: unless-stopped # Перезапустить если упал (кроме явного stop)
+
+  # ===== BACKEND - Flask dev сервер с autoreload =====
+  backend:
+    build:
+      context: ./backend
+
+    container_name: task-tracker-backend-dev
+
+    ports:
+      - "5000:5000" # Доступ снаружи: localhost:5000
+
+    # VOLUME МОНТИРОВАНИЕ
+    # Зачем:
+    # - При изменении Python файла Flask перезагружает приложение
+    # - Не нужно пересобирать контейнер
+    volumes:
+      - ./backend:/app # Монтируем весь backend
+      - /app/__pycache__ # Исключение: кэш Python
+
+    environment:
+      - FLASK_ENV=development # Включает debug, автоперезагрузку
+      - FLASK_APP=app.py
+      - DATABASE_URL=sqlite:///dev.db # Отдельная dev БД
+      - JWT_SECRET_KEY=dev-secret-key
+
+    networks:
+      - app-network
+
+    restart: unless-stopped
+
+# ===== NETWORK =====
+# ПОЧЕМУ отдельная сеть:
+# - Контейнеры могут обращаться друг к другу по имени (frontend -> backend)
+# - Изолирует приложение от других контейнеров на хосте
+networks:
+  app-network:
+    driver: bridge

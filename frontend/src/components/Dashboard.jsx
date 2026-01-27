@@ -8,6 +8,8 @@ const Dashboard = () => {
   const { user, boards, logout, fetchBoards } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const API_URL = window.__API_BASE_URL__;
+
   useEffect(() => {
     fetchBoards();
   }, []);
@@ -17,7 +19,8 @@ const Dashboard = () => {
     if (title && title.trim()) {
       try {
         const token = localStorage.getItem("access_token");
-        const response = await fetch("http://localhost:5000/boards", {
+
+        const response = await fetch(`${API_URL}/api/boards`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -52,15 +55,13 @@ const Dashboard = () => {
       setIsDeleting(true);
       try {
         const token = localStorage.getItem("access_token");
-        const response = await fetch(
-          `http://localhost:5000/boards/${boardId}`,
-          {
-            method: "DELETE",
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+
+        const response = await fetch(`${API_URL}/api/boards/${boardId}`, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
           },
-        );
+        });
 
         if (response.ok) {
           await fetchBoards();
