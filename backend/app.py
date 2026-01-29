@@ -142,7 +142,7 @@ def refresh(current_user):
         'refresh_token': new_refresh_token
     })
 
-# Остальные эндпоинты остаются такими же...
+
 @app.route('/boards', methods=['GET'])
 @token_required
 def get_boards(current_user):
@@ -327,7 +327,7 @@ def delete_column(current_user, column_id):
     db.session.commit()
     return jsonify({'message': 'Колонка удалена'})
 
-# Эндпоинт для удаления доски
+
 @app.route('/boards/<int:board_id>', methods=['DELETE'])
 @token_required
 def delete_board(current_user, board_id):
@@ -352,17 +352,17 @@ def move_task(current_user, task_id):
         return jsonify({'message': 'Задача не найдена'}), 404
     
     data = request.get_json()
-    direction = data.get('direction')  # 'left' или 'right'
+    direction = data.get('direction')  
     
-    # Находим все колонки текущей доски
+
     column = Column.query.get(task.column_id)
     board_columns = Column.query.filter_by(board_id=column.board_id).order_by(Column.position).all()
     
-    # Находим индекс текущей колонки
+
     current_index = next((i for i, col in enumerate(board_columns) if col.id == task.column_id), -1)
     
     if direction == 'left' and current_index > 0:
-        # Перемещаем влево
+
         target_column = board_columns[current_index - 1]
         target_tasks_count = Task.query.filter_by(column_id=target_column.id).count()
         
@@ -370,7 +370,7 @@ def move_task(current_user, task_id):
         task.position = target_tasks_count
         
     elif direction == 'right' and current_index < len(board_columns) - 1:
-        # Перемещаем вправо
+
         target_column = board_columns[current_index + 1]
         target_tasks_count = Task.query.filter_by(column_id=target_column.id).count()
         
@@ -382,7 +382,7 @@ def move_task(current_user, task_id):
     
     db.session.commit()
     
-    # Обновляем позиции в исходной колонке
+
     source_tasks = Task.query.filter_by(column_id=column.id).order_by(Task.position).all()
     for idx, source_task in enumerate(source_tasks):
         source_task.position = idx
