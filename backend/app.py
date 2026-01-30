@@ -17,11 +17,11 @@ app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=30)
 db.init_app(app)
 CORS(app, supports_credentials=True)
 
-# Создание таблиц
 with app.app_context():
     db.create_all()
 
-# Декоратор для проверки access токена
+# ========== ДЕКОРАТОРЫ ==========
+
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -51,7 +51,7 @@ def token_required(f):
         return f(current_user, *args, **kwargs)
     return decorated
 
-# Декоратор для проверки refresh токена
+
 def refresh_token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -83,7 +83,7 @@ def refresh_token_required(f):
         return f(current_user, *args, **kwargs)
     return decorated
 
-# Функция создания токенов
+
 def create_tokens(user_id):
     access_token = jwt.encode({
         'user_id': user_id,
@@ -99,7 +99,8 @@ def create_tokens(user_id):
     
     return access_token, refresh_token
 
-# Регистрация
+# ========== API МАРШРУТЫ ==========
+
 @app.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
@@ -115,7 +116,7 @@ def register():
 
     return jsonify({'message': 'Пользователь создан успешно'}), 201
 
-# Логин
+
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
@@ -133,7 +134,7 @@ def login():
 
     return jsonify({'message': 'Неверный логин или пароль'}), 401
 
-# Обновление access token по refresh token
+
 @app.route('/refresh', methods=['POST'])
 @refresh_token_required
 def refresh(current_user):
@@ -149,6 +150,7 @@ def refresh(current_user):
 def get_boards(current_user):
     boards = Board.query.filter_by(owner_id=current_user.id).order_by(Board.id.desc()).all()
     return jsonify([{'id': b.id, 'title': b.title} for b in boards])
+
 
 @app.route('/boards', methods=['POST'])
 @token_required
@@ -169,6 +171,7 @@ def get_columns(current_user, board_id):
     columns = Column.query.filter_by(board_id=board_id).order_by(Column.position).all()
     return jsonify([{'id': c.id, 'title': c.title, 'position': c.position} for c in columns])
 
+
 @app.route('/boards/<int:board_id>/columns', methods=['POST'])
 @token_required
 def create_column(current_user, board_id):
@@ -182,6 +185,7 @@ def create_column(current_user, board_id):
     db.session.add(column)
     db.session.commit()
     return jsonify({'id': column.id, 'title': column.title, 'position': column.position}), 201
+
 
 @app.route('/columns/<int:column_id>/tasks', methods=['GET'])
 @token_required
@@ -202,6 +206,7 @@ def get_tasks(current_user, column_id):
         'position': t.position,
         'column_id': t.column_id
     } for t in tasks])
+
 
 @app.route('/columns/<int:column_id>/tasks', methods=['POST'])
 @token_required
@@ -231,6 +236,7 @@ def create_task(current_user, column_id):
         'position': task.position,
         'column_id': task.column_id
     }), 201
+
 
 @app.route('/tasks/<int:task_id>', methods=['PUT'])
 @token_required
@@ -268,6 +274,7 @@ def update_task(current_user, task_id):
         'column_id': task.column_id
     })
 
+
 @app.route('/tasks/<int:task_id>', methods=['DELETE'])
 @token_required
 def delete_task(current_user, task_id):
@@ -283,7 +290,7 @@ def delete_task(current_user, task_id):
     db.session.commit()
     return jsonify({'message': 'Задача удалена'})
 
-# Эндпоинт для обновления колонки
+
 @app.route('/columns/<int:column_id>', methods=['PUT'])
 @token_required
 def update_column(current_user, column_id):
@@ -310,7 +317,7 @@ def update_column(current_user, column_id):
         'board_id': column.board_id
     })
 
-# Эндпоинт для удаления колонки
+
 @app.route('/columns/<int:column_id>', methods=['DELETE'])
 @token_required
 def delete_column(current_user, column_id):
@@ -341,6 +348,7 @@ def delete_board(current_user, board_id):
     db.session.commit()
     return jsonify({'message': 'Доска удалена'})
 
+
 @app.route('/tasks/<int:task_id>/move', methods=['POST'])
 @token_required
 def move_task(current_user, task_id):
@@ -355,15 +363,12 @@ def move_task(current_user, task_id):
     data = request.get_json()
     direction = data.get('direction')  
     
-
     column = Column.query.get(task.column_id)
     board_columns = Column.query.filter_by(board_id=column.board_id).order_by(Column.position).all()
     
-
     current_index = next((i for i, col in enumerate(board_columns) if col.id == task.column_id), -1)
     
     if direction == 'left' and current_index > 0:
-
         target_column = board_columns[current_index - 1]
         target_tasks_count = Task.query.filter_by(column_id=target_column.id).count()
         
@@ -371,7 +376,6 @@ def move_task(current_user, task_id):
         task.position = target_tasks_count
         
     elif direction == 'right' and current_index < len(board_columns) - 1:
-
         target_column = board_columns[current_index + 1]
         target_tasks_count = Task.query.filter_by(column_id=target_column.id).count()
         
@@ -383,7 +387,6 @@ def move_task(current_user, task_id):
     
     db.session.commit()
     
-
     source_tasks = Task.query.filter_by(column_id=column.id).order_by(Task.position).all()
     for idx, source_task in enumerate(source_tasks):
         source_task.position = idx
@@ -398,22 +401,29 @@ def move_task(current_user, task_id):
         'column_id': task.column_id
     })
 
-# Проверяем, находимся ли мы в production режиме
-FRONTEND_BUILD_PATH = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'build')
 
-# Если build папка существует (production), сервируем frontend
-if os.path.exists(FRONTEND_BUILD_PATH):
+# ========== СТАТИЧЕСКИЕ ФАЙЛЫ (PRODUCTION) ==========
+
+FRONTEND_BUILD_PATH = None
+
+# Для production: статика в корне /app (копируется Dockerfile.prod)
+if os.path.exists(os.path.join(os.path.dirname(__file__), 'static')):
+    FRONTEND_BUILD_PATH = os.path.dirname(__file__)  # ← Корень /app
+
+# Для development: статика в frontend/build
+elif os.path.exists(os.path.join(os.path.dirname(__file__), '..', 'frontend', 'build')):
+    FRONTEND_BUILD_PATH = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'build')
+
+if FRONTEND_BUILD_PATH:
     @app.route('/', defaults={'path': ''})
     @app.route('/<path:path>')
     def serve_frontend(path):
-        # Если путь существует в build папке, вернём статический файл
         if path and os.path.isfile(os.path.join(FRONTEND_BUILD_PATH, path)):
             return send_from_directory(FRONTEND_BUILD_PATH, path)
-        
-        # Для всех остальных маршрутов вернём index.html (для SPA)
         return send_from_directory(FRONTEND_BUILD_PATH, 'index.html')
+
+# ========== ЗАПУСК ==========
 
 if __name__ == '__main__':
     debug_mode = os.getenv('FLASK_ENV') != 'production'
     app.run(debug=debug_mode, host='0.0.0.0', port=5000)
-
