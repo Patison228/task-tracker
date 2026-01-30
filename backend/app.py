@@ -1,10 +1,11 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
 from functools import wraps
 from datetime import datetime, timedelta
 from models import db, User, Board, Column, Task
+import os
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///task-tracker.db'
@@ -397,6 +398,22 @@ def move_task(current_user, task_id):
         'column_id': task.column_id
     })
 
+# Проверяем, находимся ли мы в production режиме
+FRONTEND_BUILD_PATH = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'build')
+
+# Если build папка существует (production), сервируем frontend
+if os.path.exists(FRONTEND_BUILD_PATH):
+    @app.route('/', defaults={'path': ''})
+    @app.route('/<path:path>')
+    def serve_frontend(path):
+        # Если путь существует в build папке, вернём статический файл
+        if path and os.path.isfile(os.path.join(FRONTEND_BUILD_PATH, path)):
+            return send_from_directory(FRONTEND_BUILD_PATH, path)
+        
+        # Для всех остальных маршрутов вернём index.html (для SPA)
+        return send_from_directory(FRONTEND_BUILD_PATH, 'index.html')
+
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    debug_mode = os.getenv('FLASK_ENV') != 'production'
+    app.run(debug=debug_mode, host='0.0.0.0', port=5000)
 

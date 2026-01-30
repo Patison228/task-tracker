@@ -1,0 +1,39 @@
+# ==================== STAGE 1: BUILD FRONTEND ====================
+FROM node:18-alpine as frontend-builder
+
+WORKDIR /frontend
+
+COPY frontend/package*.json ./
+
+RUN npm install
+
+COPY frontend . 
+
+RUN npm run build
+
+# ==================== STAGE 2: BACKEND + СТАТИКА ====================
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Установка зависимостей системы
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Копируем requirements и устанавливаем зависимости Python
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Копируем код бэкенда
+COPY backend .
+
+# Копируем собранный frontend из первого stage
+COPY --from=frontend-builder /frontend/build ./static
+
+# Открываем порт
+EXPOSE 5000
+
+# Запускаем Flask в production режиме
+ENV FLASK_ENV=production
+CMD ["python", "app.py"]
