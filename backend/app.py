@@ -219,7 +219,7 @@ def refresh(current_user):
     })
 
 
-# ===== BOARD ENDPOINTS =====
+# ===== энпоинты доски =====
 
 @app.route('/api/boards', methods=['GET'])
 @token_required
@@ -249,13 +249,13 @@ def delete_board(current_user, board_id):
     if not board:
         return jsonify({'message': 'Доска не найдена'}), 404
     
-    # Удаляем все колонки и задачи в каскаде
+
     db.session.delete(board)
     db.session.commit()
     return jsonify({'message': 'Доска удалена'})
 
 
-# ===== COLUMN ENDPOINTS =====
+# ===== эндпоинты колонок =====
 
 @app.route('/api/boards/<int:board_id>/columns', methods=['GET'])
 @token_required
@@ -325,14 +325,13 @@ def delete_column(current_user, column_id):
     if not column:
         return jsonify({'message': 'Колонка не найдена'}), 404
     
-    # Удаляем все задачи в колонке
     Task.query.filter_by(column_id=column_id).delete()
     db.session.delete(column)
     db.session.commit()
     return jsonify({'message': 'Колонка удалена'})
 
 
-# ===== TASK ENDPOINTS =====
+# ===== эндпоинты задач =====
 
 @app.route('/api/columns/<int:column_id>/tasks', methods=['GET'])
 @token_required
@@ -456,17 +455,15 @@ def move_task(current_user, task_id):
         return jsonify({'message': 'Задача не найдена'}), 404
     
     data = request.get_json()
-    direction = data.get('direction')  # 'left' или 'right'
+    direction = data.get('direction') 
     
-    # Находим все колонки текущей доски
     column = Column.query.get(task.column_id)
     board_columns = Column.query.filter_by(board_id=column.board_id).order_by(Column.position).all()
     
-    # Находим индекс текущей колонки
     current_index = next((i for i, col in enumerate(board_columns) if col.id == task.column_id), -1)
     
     if direction == 'left' and current_index > 0:
-        # Перемещаем влево
+
         target_column = board_columns[current_index - 1]
         target_tasks_count = Task.query.filter_by(column_id=target_column.id).count()
         
@@ -474,7 +471,7 @@ def move_task(current_user, task_id):
         task.position = target_tasks_count
         
     elif direction == 'right' and current_index < len(board_columns) - 1:
-        # Перемещаем вправо
+
         target_column = board_columns[current_index + 1]
         target_tasks_count = Task.query.filter_by(column_id=target_column.id).count()
         
@@ -486,7 +483,6 @@ def move_task(current_user, task_id):
     
     db.session.commit()
     
-    # Обновляем позиции в исходной колонке
     source_tasks = Task.query.filter_by(column_id=column.id).order_by(Task.position).all()
     for idx, source_task in enumerate(source_tasks):
         source_task.position = idx
@@ -502,31 +498,11 @@ def move_task(current_user, task_id):
     })
 
 
-# ===== SPA ROUTING (ТОЛЬКО В PRODUCTION) =====
-# ПОЧЕМУ это нужно:
-# - React Router обрабатывает клиентские маршруты
-# - Когда пользователь переходит по /boards, это НЕ запрос к backend /boards
-# - Это запрос к index.html чтобы загрузить React приложение
-# - React Router затем обработает /boards на клиенте
-#
-# В production:
-# - Backend раздаёт static files из dist/ папки
-# - Для всех неизвестных путей возвращает index.html
-
 if FLASK_ENV == 'production':
     @app.route('/', defaults={'path': ''})
     @app.route('/<path:path>')
     def serve_react(path):
-        """
-        Обслуживает React приложение для всех неизвестных маршрутов
-        
-        Порядок обработки:
-        1. Если путь начинается с /api - это ошибка 404 (API должен обрабатываться выше)
-        2. Если это существующий static файл (CSS, JS, изображения) - вернуть его
-        3. Для всех остальных путей - вернуть index.html (React Router обработает)
-        """
-        # API routes обрабатываются выше (они зарегистрированы раньше)
-        # Если мы здесь - это не API, значит ошибка
+
         if path.startswith('api/'):
             raise NotFound()
         
@@ -534,12 +510,9 @@ if FLASK_ENV == 'production':
         if path and os.path.isfile(os.path.join(app.static_folder, path)):
             return send_from_directory(app.static_folder, path)
         
-        # Для всех остальных путей - вернуть index.html
-        # React Router возьмёт оттуда и обработает маршрут
         return send_from_directory(app.static_folder, 'index.html')
 
 
 if __name__ == '__main__':
-    # Development vs Production
     debug = FLASK_ENV == 'development'
     app.run(debug=debug, host='0.0.0.0', port=5000)

@@ -1,48 +1,29 @@
-import React, { createContext, useState, useContext, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 
 const AuthContext = createContext();
-
-export const useAuth = () => useContext(AuthContext);
+const API_URL = "http://localhost:5000";
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [boards, setBoards] = useState([]);
-
-  const API_BASE = window.__API_BASE_URL__;
+  const [accessToken, setAccessToken] = useState(
+    localStorage.getItem("accessToken"),
+  );
 
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    if (token) {
-      fetchBoards();
+    const token = localStorage.getItem("accessToken");
+    const userData = localStorage.getItem("user");
+
+    if (token && userData) {
+      setAccessToken(token);
+      setUser(JSON.parse(userData));
     }
     setLoading(false);
   }, []);
 
-  const fetchBoards = async () => {
-    try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch(`${API_BASE}/api/boards`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to fetch boards");
-      }
-
-      const data = await res.json();
-      setBoards(data);
-    } catch (err) {
-      console.error(err);
-      setBoards([]);
-    }
-  };
-
   const login = async (username, password) => {
     try {
-      const res = await fetch(`${API_BASE}/api/auth/login`, {
+      const response = await fetch(`${API_URL}/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -50,29 +31,30 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ username, password }),
       });
 
-      if (!res.ok) {
-        return false;
+      if (!response.ok) {
+        throw new Error("Ошибка при логине");
       }
 
-      const data = await res.json();
-      localStorage.setItem("access_token", data.access_token);
+      const data = await response.json();
 
-      if (data.refresh_token) {
-        localStorage.setItem("refresh_token", data.refresh_token);
-      }
+      localStorage.setItem("accessToken", data.access_token);
+      localStorage.setItem("refreshToken", data.refresh_token);
+      localStorage.setItem("user", JSON.stringify(data.user));
 
-      setUser({ username });
-      await fetchBoards();
+      setAccessToken(data.access_token);
+      setUser(data.user);
+
       return true;
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error("Ошибка логина:", error);
       return false;
     }
   };
 
   const register = async (username, password) => {
     try {
-      const res = await fetch(`${API_BASE}/api/auth/register`, {
+      const response = await fetch(`${API_URL}/register`, {
+        // ← ИСПОЛЬЗУЙ API_URL
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -80,29 +62,42 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ username, password }),
       });
 
-      if (!res.ok) {
-        return false;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Ошибка при регистрации");
       }
 
       return await login(username, password);
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error("Ошибка регистрации:", error);
       return false;
     }
   };
 
   const logout = () => {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("user");
+    setAccessToken(null);
     setUser(null);
-    setBoards([]);
   };
 
-  return (
-    <AuthContext.Provider
-      value={{ user, boards, login, register, logout, loading, fetchBoards }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  const value = {
+    user,
+    accessToken,
+    loading,
+    login,
+    register,
+    logout,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth должен быть использован внутри AuthProvider");
+  }
+  return context;
 };
