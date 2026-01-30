@@ -11,7 +11,7 @@ export const AuthProvider = ({ children }) => {
   const [boards, setBoards] = useState([]);
 
   // Определяем базовый URL в зависимости от окружения
-  const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5000";
+  const API_BASE = process.env.REACT_APP_API_URL || "";
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
