@@ -399,20 +399,25 @@ def move_task(current_user, task_id):
     })
 
 
-FRONTEND_BUILD_PATH = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'build')
+FRONTEND_BUILD_PATH = None
 
 
-if os.path.exists(FRONTEND_BUILD_PATH):
+if os.path.exists(os.path.join(os.path.dirname(__file__), 'static')):
+    FRONTEND_BUILD_PATH = os.path.dirname(__file__)
+
+
+elif os.path.exists(os.path.join(os.path.dirname(__file__), '..', 'frontend', 'build')):
+    FRONTEND_BUILD_PATH = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'build')
+
+if FRONTEND_BUILD_PATH:
     @app.route('/', defaults={'path': ''})
     @app.route('/<path:path>')
     def serve_frontend(path):
-
         if path and os.path.isfile(os.path.join(FRONTEND_BUILD_PATH, path)):
             return send_from_directory(FRONTEND_BUILD_PATH, path)
-        
         return send_from_directory(FRONTEND_BUILD_PATH, 'index.html')
+
 
 if __name__ == '__main__':
     debug_mode = os.getenv('FLASK_ENV') != 'production'
     app.run(debug=debug_mode, host='0.0.0.0', port=5000)
-

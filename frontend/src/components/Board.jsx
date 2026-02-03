@@ -5,6 +5,9 @@ import Column from "./Column";
 import Task from "./Task";
 import "../styles/Board.css";
 
+// ⭐ API_BASE для dev/prod режимов
+const API_BASE = process.env.REACT_APP_API_URL || "";
+
 const Board = () => {
   const { boardId } = useParams();
   const navigate = useNavigate();
@@ -15,28 +18,22 @@ const Board = () => {
   const fetchColumns = useCallback(async () => {
     try {
       const token = localStorage.getItem("access_token");
-      const res = await fetch(
-        `http://localhost:5000/boards/${boardId}/columns`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+      const res = await fetch(`${API_BASE}/boards/${boardId}/columns`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-      );
+      });
       const cols = await res.json();
       const sortedColumns = cols.sort((a, b) => a.position - b.position);
       setColumns(sortedColumns);
 
       const tasksData = {};
       for (const col of sortedColumns) {
-        const taskRes = await fetch(
-          `http://localhost:5000/columns/${col.id}/tasks`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+        const taskRes = await fetch(`${API_BASE}/columns/${col.id}/tasks`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
           },
-        );
+        });
         const colTasks = await taskRes.json();
         tasksData[col.id] = colTasks.sort((a, b) => a.position - b.position);
       }
@@ -54,7 +51,7 @@ const Board = () => {
     if (!newColumnTitle.trim()) return;
     try {
       const token = localStorage.getItem("access_token");
-      await fetch(`http://localhost:5000/boards/${boardId}/columns`, {
+      await fetch(`${API_BASE}/boards/${boardId}/columns`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -76,7 +73,7 @@ const Board = () => {
     if (!window.confirm("Удалить колонку и все задачи в ней?")) return;
     try {
       const token = localStorage.getItem("access_token");
-      await fetch(`http://localhost:5000/columns/${columnId}`, {
+      await fetch(`${API_BASE}/columns/${columnId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -94,7 +91,7 @@ const Board = () => {
     try {
       const token = localStorage.getItem("access_token");
       const colTasks = tasks[columnId] || [];
-      await fetch(`http://localhost:5000/columns/${columnId}/tasks`, {
+      await fetch(`${API_BASE}/columns/${columnId}/tasks`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -115,7 +112,7 @@ const Board = () => {
     if (!window.confirm("Удалить задачу?")) return;
     try {
       const token = localStorage.getItem("access_token");
-      await fetch(`http://localhost:5000/tasks/${taskId}`, {
+      await fetch(`${API_BASE}/tasks/${taskId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -130,17 +127,14 @@ const Board = () => {
   const moveTask = async (taskId, direction) => {
     try {
       const token = localStorage.getItem("access_token");
-      const response = await fetch(
-        `http://localhost:5000/tasks/${taskId}/move`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ direction }),
+      const response = await fetch(`${API_BASE}/tasks/${taskId}/move`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-      );
+        body: JSON.stringify({ direction }),
+      });
 
       if (response.ok) {
         fetchColumns();
@@ -154,7 +148,6 @@ const Board = () => {
     }
   };
 
-  // Определяем, можно ли переместить задачу влево/вправо
   const canMoveTask = (task, columnId) => {
     const columnIndex = columns.findIndex((col) => col.id === columnId);
     return {

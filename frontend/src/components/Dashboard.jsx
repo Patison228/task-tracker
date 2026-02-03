@@ -4,6 +4,8 @@ import { useAuth } from "../contexts/AuthContext";
 import { Plus, LogOut, Trash2 } from "lucide-react";
 import "../styles/Dashboard.css";
 
+const API_BASE = process.env.REACT_APP_API_URL || "";
+
 const Dashboard = () => {
   const { user, boards, logout, fetchBoards } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -17,7 +19,7 @@ const Dashboard = () => {
     if (title && title.trim()) {
       try {
         const token = localStorage.getItem("access_token");
-        const response = await fetch("http://localhost:5000/boards", {
+        const response = await fetch(`${API_BASE}/boards`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -52,15 +54,12 @@ const Dashboard = () => {
       setIsDeleting(true);
       try {
         const token = localStorage.getItem("access_token");
-        const response = await fetch(
-          `http://localhost:5000/boards/${boardId}`,
-          {
-            method: "DELETE",
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+        const response = await fetch(`${API_BASE}/boards/${boardId}`, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
           },
-        );
+        });
 
         if (response.ok) {
           await fetchBoards();
