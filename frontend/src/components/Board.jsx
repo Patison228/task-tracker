@@ -173,7 +173,7 @@ const Board = () => {
           >
             ← Назад к доскам
           </button>
-          <h1 className="board-title">Доска #{boardId}</h1>
+          <h1 className="board-title">Доска</h1>
         </header>
 
         <div className="column-creator">
@@ -196,7 +196,7 @@ const Board = () => {
               column={column}
               taskCount={(tasks[column.id] || []).length}
               onAddTask={() => createTask(column.id)}
-              onDelete={() => deleteColumn(column.id)} 
+              onDelete={() => deleteColumn(column.id)}
             >
               {(tasks[column.id] || []).map((task) => {
                 const { left, right } = canMoveTask(task, column.id);

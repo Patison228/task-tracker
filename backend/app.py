@@ -398,19 +398,18 @@ def move_task(current_user, task_id):
         'column_id': task.column_id
     })
 
-# Проверяем, находимся ли мы в production режиме
+
 FRONTEND_BUILD_PATH = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'build')
 
-# Если build папка существует (production), сервируем frontend
+
 if os.path.exists(FRONTEND_BUILD_PATH):
     @app.route('/', defaults={'path': ''})
     @app.route('/<path:path>')
     def serve_frontend(path):
-        # Если путь существует в build папке, вернём статический файл
+
         if path and os.path.isfile(os.path.join(FRONTEND_BUILD_PATH, path)):
             return send_from_directory(FRONTEND_BUILD_PATH, path)
         
-        # Для всех остальных маршрутов вернём index.html (для SPA)
         return send_from_directory(FRONTEND_BUILD_PATH, 'index.html')
 
 if __name__ == '__main__':
