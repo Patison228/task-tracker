@@ -5,7 +5,6 @@ import Column from "./Column";
 import Task from "./Task";
 import "../styles/Board.css";
 
-// ⭐ API_BASE для dev/prod режимов
 const API_BASE = process.env.REACT_APP_API_URL || "";
 
 const Board = () => {

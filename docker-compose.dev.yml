@@ -12,7 +12,7 @@ services:
       - FLASK_ENV=development
       - FLASK_APP=app.py
     volumes:
-      - ./backend:/app # ← Volume для hot reload
+      - ./backend:/app
     command: python app.py
     networks:
       - task-tracker-network
@@ -26,10 +26,10 @@ services:
       - "3000:3000"
     environment:
       - REACT_APP_API_URL=http://localhost:5000
-      - DANGEROUSLY_DISABLE_HOST_CHECK=true # Для WSL
+      - DANGEROUSLY_DISABLE_HOST_CHECK=true
     volumes:
-      - ./frontend:/app # ← Volume для hot reload
-      - /app/node_modules # ← Защищаем node_modules
+      - ./frontend:/app
+      - /app/node_modules
     command: npm start
     depends_on:
       - backend

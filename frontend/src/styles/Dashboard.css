@@ -57,7 +57,6 @@
   background: #f3f4f6;
 }
 
-/* Стили для пустого состояния */
 .empty-boards {
   display: flex;
   justify-content: center;
@@ -97,7 +96,6 @@
   font-size: 1.125rem;
 }
 
-/* Обертка для карточки доски с кнопкой удаления */
 .board-card-wrapper {
   position: relative;
   transition: all 0.3s ease;
@@ -162,7 +160,6 @@
   transform: scale(1.05);
 }
 
-/* Кнопка удаления доски */
 .btn-delete-board {
   position: absolute;
   top: 12px;
@@ -193,7 +190,6 @@
   cursor: not-allowed;
 }
 
-/* Адаптивность */
 @media (max-width: 768px) {
   .dashboard-container {
     padding: 1rem;
